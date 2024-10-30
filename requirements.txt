@@ -1,0 +1,7 @@
+torch
+transformers
+datasets
+sacrebleu
+aim
+sentencepiece
+hydra-core

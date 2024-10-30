@@ -1,0 +1,23 @@
+aim:
+  repo: aim://0.0.0.0:53800
+dataset:
+  name: davidstap/biblenlp-corpus-mmteb
+  lang_pair: eng-deu
+  input_key_name: eng
+  output_key_name: deu
+tokenizer:
+  name: t5-small
+  max_length: 128
+model:
+  name: t5-small
+training:
+  num_epochs: 10
+  batch_size: 16
+  optimizer:
+    lr: 5e-05
+    weight_decay: 1e-2
+  scheduler:
+    step_size: 30
+    gamma: 0.1
+  device: cuda
+  log_interval: 300
