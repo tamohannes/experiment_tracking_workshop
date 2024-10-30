@@ -115,14 +115,9 @@ def main(cfg):
                 all_references.extend([[ref] for ref in references])  # sacrebleu expects a list of lists for refs
                 all_inputs.extend(inputs)
 
-        for idx in range(len(all_inputs)):
-            aim_run.track(Text(all_inputs[idx]), name="input", context={"idx": idx}, step=step)
-            aim_run.track(Text(all_predictions[idx]), name="prediction", context={"idx": idx}, step=step)
-            aim_run.track(Text(all_references[idx][0]), name="reference", context={"idx": idx}, step=step)
-
         avg_loss = total_loss / len(dataloader)
         bleu_score = bleu.corpus_score(all_predictions, all_references).score
-        return avg_loss, bleu_score
+        return avg_loss, bleu_score, all_predictions, all_references, all_inputs
 
     model.train()
     step = 0
@@ -138,20 +133,27 @@ def main(cfg):
             optimizer.zero_grad()
 
             if step % cfg.training.log_interval == 0:
-                val_loss, val_bleu = validate(model, tokenizer, valid_dataloader, device, step)
+                val_loss, val_bleu, all_predictions, all_references, all_inputs = validate(
+                    model, tokenizer, valid_dataloader, device, step
+                )
                 loop.set_postfix(loss=loss.item(), val_loss=val_loss, val_bleu=val_bleu)
 
                 aim_run.track(loss.item(), name="loss", context={"subset": "train"}, step=step, epoch=epoch)
                 aim_run.track(val_loss, name="loss", context={"subset": "val"}, step=step, epoch=epoch)
                 aim_run.track(val_bleu, name="bleu", context={"subset": "val"}, step=step, epoch=epoch)
-                aim_run.track(optimizer.param_groups[0]["lr"], name="lr", step=step, epoch=epoch)
-                aim_run.track(optimizer.param_groups[0]["weight_decay"], name="weight_decay", step=step, epoch=epoch)
+                aim_run.track(optimizer.param_groups[0]["lr"], name="lr", context={"subset": "train"}, step=step, epoch=epoch)
+                aim_run.track(optimizer.param_groups[0]["weight_decay"], name="weight_decay", context={"subset": "train"}, step=step, epoch=epoch)
 
             step += 1
 
             loop.set_description(f"Epoch {epoch + 1}")
 
         scheduler.step()
+
+        for idx in range(len(all_inputs)):
+            aim_run.track(Text(all_inputs[idx]), name="input", context={"idx": idx, "epoch": epoch}, step=epoch)
+            aim_run.track(Text(all_predictions[idx]), name="prediction", context={"idx": idx, "epoch": epoch}, step=epoch)
+            aim_run.track(Text(all_references[idx][0]), name="reference", context={"idx": idx, "epoch": epoch}, step=epoch)
 
     model.save_pretrained("./translation_model")
 
